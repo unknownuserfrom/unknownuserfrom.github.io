@@ -1,23 +1,131 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<title>自动生成折叠层级展示</title>
-<style>
-  body { font-family: Arial, sans-serif; padding: 20px; }
-  .item { margin-left: 20px; }
-  summary { cursor: pointer; font-weight: bold; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地区分层展示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .tree {
+            list-style: none;
+        }
+
+        .tree-item {
+            margin: 5px 0;
+        }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .tree-node:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .tree-node.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .toggle-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .region-name {
+            flex: 1;
+            font-size: 16px;
+        }
+
+        .region-count {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-left: 10px;
+        }
+
+        .tree-children {
+            list-style: none;
+            margin-left: 30px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .tree-children.expanded {
+            max-height: 2000px;
+        }
+
+        .leaf-node {
+            cursor: default;
+        }
+
+        .leaf-node .toggle-icon {
+            width: 20px;
+            opacity: 0.3;
+        }
+
+        .leaf-node:hover {
+            background: #f1f3f5;
+            transform: none;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>🌏 中国地区分层展示</h1>
+        <ul class="tree" id="regionTree"></ul>
+    </div>
 
-<h1>自动生成的折叠层级展示</h1>
-
-<div id="container"></div>
-
-<script>
-  // ---- 你的对象结构 ----
-  const data = [
+    <script>
+        // 地区数据结构
+        const regionData = 
+[
     {
         "name": "11 北京市",
         "children": [
@@ -13796,30 +13904,70 @@
         ]
     }
 ];
+        // 创建树节点
+        function createTreeNode(item, level = 0) {
+            const li = document.createElement('li');
+            li.className = 'tree-item';
 
-  // ---- 递归生成 HTML ----
-  function createTree(node) {
-    if (!node.children || node.children.length === 0) {
-      // 叶子节点
-      return `<div class="item">${node.name}</div>`;
-    }
+            const hasChildren = item.children && item.children.length > 0;
+            
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = hasChildren ? 'tree-node' : 'tree-node leaf-node';
 
-    // 有子节点，用 <details>
-    return `
-      <details>
-        <summary>${node.name}</summary>
-        <div class="item">
-          ${node.children.map(createTree).join("")}
-        </div>
-      </details>
-    `;
-  }
+            const toggleIcon = document.createElement('span');
+            toggleIcon.className = 'toggle-icon';
+            toggleIcon.textContent = hasChildren ? '▶' : '•';
 
-  // ---- 渲染到页面 ----
-  const container = document.getElementById("container");
-  container.innerHTML = data.map(createTree).join("");
+            const regionName = document.createElement('span');
+            regionName.className = 'region-name';
+            regionName.textContent = item.name;
 
-</script>
+            if (hasChildren) {
+                const regionCount = document.createElement('span');
+                regionCount.className = 'region-count';
+                regionCount.textContent = `(${item.children.length})`;
+                nodeDiv.appendChild(toggleIcon);
+                nodeDiv.appendChild(regionName);
+                nodeDiv.appendChild(regionCount);
+            } else {
+                nodeDiv.appendChild(toggleIcon);
+                nodeDiv.appendChild(regionName);
+            }
 
+            li.appendChild(nodeDiv);
+
+            if (hasChildren) {
+                const childrenUl = document.createElement('ul');
+                childrenUl.className = 'tree-children';
+
+                item.children.forEach(child => {
+                    childrenUl.appendChild(createTreeNode(child, level + 1));
+                });
+
+                li.appendChild(childrenUl);
+
+                // 添加点击事件
+                nodeDiv.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleIcon.classList.toggle('expanded');
+                    childrenUl.classList.toggle('expanded');
+                    nodeDiv.classList.toggle('active');
+                });
+            }
+
+            return li;
+        }
+
+        // 初始化树
+        function initTree() {
+            const treeContainer = document.getElementById('regionTree');
+            regionData.forEach(region => {
+                treeContainer.appendChild(createTreeNode(region));
+            });
+        }
+
+        // 页面加载完成后初始化
+        initTree();
+    </script>
 </body>
 </html>
